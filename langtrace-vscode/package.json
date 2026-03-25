@@ -4,35 +4,123 @@
   "description": "Unofficial LangSmith client for VS Code - view traces, runs, and projects without leaving your editor",
   "version": "0.0.1",
   "publisher": "community",
-  "engines": { "vscode": "^1.85.0" },
-  "categories": ["Other"],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
   "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
     "viewsContainers": {
-      "activitybar": [{
-        "id": "langtrace",
-        "title": "LangTrace",
-        "icon": "media/icon.svg"
-      }]
+      "activitybar": [
+        {
+          "id": "langtrace",
+          "title": "LangTrace",
+          "icon": "media/icon.svg"
+        }
+      ]
     },
     "views": {
       "langtrace": [
-        { "id": "langtrace.projects", "name": "Projects" },
-        { "id": "langtrace.runs", "name": "Runs" }
+        {
+          "id": "langtrace.projects",
+          "name": "Projects"
+        },
+        {
+          "id": "langtrace.runs",
+          "name": "Runs"
+        },
+        {
+          "id": "langtrace.datasets",
+          "name": "Datasets"
+        }
       ]
     },
     "commands": [
-      { "command": "langtrace.setApiKey", "title": "LangTrace: Set API Key" },
-      { "command": "langtrace.clearApiKey", "title": "LangTrace: Clear API Key" },
-      { "command": "langtrace.refresh", "title": "LangTrace: Refresh", "icon": "$(refresh)" },
-      { "command": "langtrace.openInBrowser", "title": "LangTrace: Open in Browser", "icon": "$(link-external)" }
+      {
+        "command": "langtrace.setApiKey",
+        "title": "LangTrace: Set API Key"
+      },
+      {
+        "command": "langtrace.clearApiKey",
+        "title": "LangTrace: Clear API Key"
+      },
+      {
+        "command": "langtrace.refresh",
+        "title": "LangTrace: Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "langtrace.openInBrowser",
+        "title": "LangTrace: Open in Browser",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "langtrace.copyRunId",
+        "title": "LangTrace: Copy Run ID"
+      },
+      {
+        "command": "langtrace.filterByStatus",
+        "title": "LangTrace: Filter by Status"
+      },
+      {
+        "command": "langtrace.filterBySearch",
+        "title": "LangTrace: Search Runs"
+      },
+      {
+        "command": "langtrace.clearFilters",
+        "title": "LangTrace: Clear All Filters"
+      },
+      {
+        "command": "langtrace.diffPrompts",
+        "title": "LangTrace: Compare Prompts"
+      },
+      {
+        "command": "langtrace.refreshDatasets",
+        "title": "LangTrace: Refresh Datasets",
+        "icon": "$(refresh)"
+      }
     ],
     "menus": {
       "view/title": [
         {
           "command": "langtrace.refresh",
           "when": "view == langtrace.projects",
+          "group": "navigation"
+        },
+        {
+          "command": "langtrace.filterByStatus",
+          "when": "view == langtrace.runs",
+          "group": "navigation",
+          "icon": "$(filter)"
+        },
+        {
+          "command": "langtrace.clearFilters",
+          "when": "view == langtrace.runs",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "langtrace.copyRunId",
+          "when": "view == langtrace.projects && viewItem == runItem",
+          "group": "navigation"
+        },
+        {
+          "command": "langtrace.copyRunId",
+          "when": "view == langtrace.runs && viewItem == runItem",
+          "group": "navigation"
+        },
+        {
+          "command": "langtrace.diffPrompts",
+          "when": "view == langtrace.projects && viewItem == runItem",
+          "group": "navigation"
+        },
+        {
+          "command": "langtrace.diffPrompts",
+          "when": "view == langtrace.runs && viewItem == runItem",
           "group": "navigation"
         }
       ]
@@ -59,14 +147,24 @@
     }
   },
   "scripts": {
-    "compile": "node esbuild.js",
+    "compile": "node esbuild.js && npx tsc -p tsconfig.json --noEmit",
     "watch": "node esbuild.js --watch",
+    "pretest": "npm run compile",
+    "test": "node ./dist/test/runTests.js",
     "vscode:prepublish": "node esbuild.js --production"
   },
   "devDependencies": {
-    "@types/vscode": "^1.85.0",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^20.0.0",
-    "typescript": "^5.3.0",
-    "esbuild": "^0.20.0"
+    "@types/sinon": "^21.0.0",
+    "@types/sinon-chai": "^4.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-electron": "^2.5.2",
+    "chai": "^6.2.2",
+    "esbuild": "^0.20.0",
+    "mocha": "^11.7.5",
+    "sinon": "^21.0.3",
+    "sinon-chai": "^4.0.1",
+    "typescript": "^5.3.0"
   }
 }

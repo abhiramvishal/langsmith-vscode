@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: langtrace-vscode
+
+      - name: Compile
+        run: npm run compile
+        working-directory: langtrace-vscode
+
+      - name: Build VSIX
+        run: npx vsce package --no-dependencies
+        working-directory: langtrace-vscode
+
+      - name: Publish to Marketplace
+        run: npx vsce publish -p ${{ secrets.VSCE_PAT }} --no-dependencies
+        working-directory: langtrace-vscode
+

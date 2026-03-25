@@ -1,0 +1,6 @@
+node_modules/
+dist/
+*.vsix
+.env
+out/
+langtrace-vscode/.vscode-test/

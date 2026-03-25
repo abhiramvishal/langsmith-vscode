@@ -34,3 +34,12 @@ export interface LangSmithTrace {
   children: LangSmithTrace[];
 }
 
+export interface LangSmithDataset {
+  id: string;
+  name: string;
+  description: string;
+  created_at: string;
+  example_count: number;
+  data_type: string;
+}
+

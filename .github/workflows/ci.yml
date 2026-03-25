@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-and-build:
+    name: Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: langtrace-vscode
+
+      - name: Compile (TypeScript check)
+        run: npm run compile
+        working-directory: langtrace-vscode
+
+      - name: Run tests (Linux with Xvfb)
+        if: matrix.os == 'ubuntu-latest'
+        run: xvfb-run -a npm test
+        working-directory: langtrace-vscode
+
+      - name: Run tests (macOS/Windows)
+        if: matrix.os != 'ubuntu-latest'
+        run: npm test
+        working-directory: langtrace-vscode
+
+      - name: Build VSIX
+        run: npx vsce package --no-dependencies
+        working-directory: langtrace-vscode
+
+      - name: Upload VSIX artifact
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: langtrace-vscode-vsix
+          path: langtrace-vscode/*.vsix
+

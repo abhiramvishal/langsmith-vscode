@@ -27,6 +27,15 @@ class ErrorTreeItem extends vscode.TreeItem {
   }
 }
 
+class LoadMoreItem extends vscode.TreeItem {
+  constructor(projectId: string) {
+    super("$(chevron-down) Load more...");
+    this.collapsibleState = vscode.TreeItemCollapsibleState.None;
+    this.contextValue = "loadMore";
+    this.command = { command: "langtrace.loadMoreProjectRuns", title: "Load more runs", arguments: [projectId] };
+  }
+}
+
 export class ProjectItem extends vscode.TreeItem {
   public readonly project: LangSmithProject;
 
@@ -100,7 +109,7 @@ class RunItem extends vscode.TreeItem {
     this.tooltip.isTrusted = true;
 
     this.command = { command: "langtrace.openTrace", title: "Open Trace", arguments: [run.id] };
-    this.contextValue = "langtrace:run";
+    this.contextValue = "runItem";
   }
 }
 
@@ -115,6 +124,9 @@ export class ProjectsProvider implements vscode.TreeDataProvider<vscode.TreeItem
   private runsCacheByProjectId = new Map<string, LangSmithRun[]>();
   private projectRunsErrorByProjectId = new Map<string, string>();
   private loadingRuns = new Set<string>();
+
+  private currentLimitByProjectId = new Map<string, number>();
+  private lastSelectedProjectId: string | undefined;
 
   private readonly _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
   public readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
@@ -133,12 +145,17 @@ export class ProjectsProvider implements vscode.TreeDataProvider<vscode.TreeItem
 
   public setMaxRuns(limit: number) {
     this.maxRuns = limit;
+    this.currentLimitByProjectId.clear();
     this.clearRunsCaches();
     this._onDidChangeTreeData.fire(undefined);
   }
 
   public refresh() {
-    this.clearCaches();
+    // Keep the per-project currentLimit so "Load more" remains meaningful across polling.
+    this.projectsCache = undefined;
+    this.projectsError = undefined;
+    this.loadingProjects = false;
+    this.clearRunsCaches();
     this._onDidChangeTreeData.fire(undefined);
   }
 
@@ -152,6 +169,8 @@ export class ProjectsProvider implements vscode.TreeDataProvider<vscode.TreeItem
     this.projectsCache = undefined;
     this.projectsError = undefined;
     this.loadingProjects = false;
+    this.currentLimitByProjectId.clear();
+    this.lastSelectedProjectId = undefined;
     this.clearRunsCaches();
   }
 
@@ -169,10 +188,10 @@ export class ProjectsProvider implements vscode.TreeDataProvider<vscode.TreeItem
     }
   }
 
-  private async loadRuns(projectId: string): Promise<void> {
+  private async loadRuns(projectId: string, limit: number): Promise<void> {
     if (!this.client) return;
     try {
-      const runs = await this.client.getRuns(projectId, this.maxRuns);
+      const runs = await this.client.getRuns(projectId, limit);
       this.runsCacheByProjectId.set(projectId, runs);
       this.projectRunsErrorByProjectId.delete(projectId);
     } catch (err) {
@@ -208,19 +227,49 @@ export class ProjectsProvider implements vscode.TreeDataProvider<vscode.TreeItem
     // Inline children for runs.
     if (!(element instanceof ProjectItem)) return [];
     const projectId = element.project.id;
-    this.onProjectSelected(element.project);
+    const currentLimit =
+      this.currentLimitByProjectId.get(projectId) ?? this.maxRuns;
+    if (!this.currentLimitByProjectId.has(projectId)) {
+      this.currentLimitByProjectId.set(projectId, currentLimit);
+    }
+
+    // Avoid resetting the standalone Runs panel on "Load more..." re-renders.
+    if (this.lastSelectedProjectId !== projectId) {
+      this.lastSelectedProjectId = projectId;
+      this.onProjectSelected(element.project);
+    }
 
     const error = this.projectRunsErrorByProjectId.get(projectId);
     if (error) return [new ErrorTreeItem(error)];
 
     const cached = this.runsCacheByProjectId.get(projectId);
-    if (cached) return cached.map((r) => new RunItem(r));
+    if (cached) {
+      const items: vscode.TreeItem[] = cached.map((r) => new RunItem(r));
+      if (cached.length === currentLimit) items.push(new LoadMoreItem(projectId));
+      return items;
+    }
 
     if (this.loadingRuns.has(projectId)) return [new LoadingItem()];
 
     this.loadingRuns.add(projectId);
-    void this.loadRuns(projectId).finally(() => this._onDidChangeTreeData.fire(element));
+    void this.loadRuns(projectId, currentLimit).finally(() => this._onDidChangeTreeData.fire(element));
     return [new LoadingItem()];
+  }
+
+  public async loadMore(projectId: string): Promise<void> {
+    if (!this.client) return;
+
+    const currentLimit = this.currentLimitByProjectId.get(projectId) ?? this.maxRuns;
+    const nextLimit = currentLimit * 2;
+
+    this.currentLimitByProjectId.set(projectId, nextLimit);
+    this.runsCacheByProjectId.delete(projectId);
+    this.projectRunsErrorByProjectId.delete(projectId);
+
+    if (this.loadingRuns.has(projectId)) return;
+    this.loadingRuns.add(projectId);
+    await this.loadRuns(projectId, nextLimit);
+    this._onDidChangeTreeData.fire(undefined);
   }
 }
 

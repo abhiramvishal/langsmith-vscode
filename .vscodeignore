@@ -1,0 +1,15 @@
+src/
+node_modules/
+esbuild.js
+tsconfig.json
+.gitignore
+*.map
+
+# Keep only build + runtime assets
+*
+!dist/
+!media/
+!media/**
+!package.json
+!README.md
+!LICENSE

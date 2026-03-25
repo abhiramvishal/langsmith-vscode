@@ -1,4 +1,4 @@
-import { LangSmithProject, LangSmithRun, RunStatus } from "../models/types";
+import { LangSmithDataset, LangSmithProject, LangSmithRun, RunStatus } from "../models/types";
 
 export class LangSmithClient {
   constructor(
@@ -10,15 +10,12 @@ export class LangSmithClient {
     const base = this.baseUrl.replace(/\/$/, "");
     const url = path.startsWith("http://") || path.startsWith("https://") ? path : `${base}${path}`;
 
-    const res = await fetch(url, {
-      method: "GET",
-      headers: {
-        "x-api-key": this.apiKey,
-        "accept": "application/json",
-      },
-    });
+    const maxRetries = 3; // retry up to 3 times after the initial attempt
+    const backoffDelaysMs = [1000, 2000, 4000];
 
-    if (!res.ok) {
+    const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+    const makeHttpError = async (res: Response) => {
       let body = "";
       try {
         body = await res.text();
@@ -26,12 +23,73 @@ export class LangSmithClient {
         // ignore
       }
       const snippet = body && body.length > 800 ? body.slice(0, 800) + "..." : body;
-      throw new Error(
+      const err = new Error(
         `LangSmith API request failed (${res.status} ${res.statusText}) for ${url}${snippet ? `: ${snippet}` : ""}`
-      );
+      ) as Error & { statusCode?: number };
+      err.statusCode = res.status;
+      return err;
+    };
+
+    let lastErr: unknown;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const res = await fetch(url, {
+          method: "GET",
+          headers: {
+            "x-api-key": this.apiKey,
+            accept: "application/json",
+          },
+        });
+
+        if (!res.ok) {
+          const httpErr = await makeHttpError(res);
+          const statusCode = (httpErr as { statusCode?: number }).statusCode ?? res.status;
+
+          // Never retry these.
+          if (statusCode === 401 || statusCode === 403 || statusCode === 404) {
+            throw httpErr;
+          }
+
+          const isRetriable5xx = statusCode >= 500 && statusCode <= 599;
+          if (isRetriable5xx && attempt < maxRetries) {
+            lastErr = httpErr;
+            await delay(backoffDelaysMs[attempt] ?? 4000);
+            continue;
+          }
+
+          throw httpErr;
+        }
+
+        return (await res.json()) as T;
+      } catch (err) {
+        lastErr = err;
+
+        const statusCode = (err as { statusCode?: number }).statusCode;
+        const isRetriable5xx = typeof statusCode === "number" && statusCode >= 500 && statusCode <= 599;
+
+        // If it's an HTTP error we decided not to retry (401/403/404/other), surface immediately.
+        if (typeof statusCode === "number" && !isRetriable5xx) {
+          throw err;
+        }
+
+        // Network error or retriable 5xx: retry with backoff.
+        if (attempt < maxRetries) {
+          await delay(backoffDelaysMs[attempt] ?? 4000);
+          continue;
+        }
+
+        const retriesDone = maxRetries;
+        const message = err instanceof Error ? err.message : String(err);
+        throw new Error(
+          `LangSmith API request failed after ${retriesDone} retries for ${url}: ${message}`
+        );
+      }
     }
 
-    return (await res.json()) as T;
+    // Should be unreachable.
+    const retriesDone = maxRetries;
+    const message = lastErr instanceof Error ? lastErr.message : String(lastErr);
+    throw new Error(`LangSmith API request failed after ${retriesDone} retries for ${url}: ${message}`);
   }
 
   public async getProjects(): Promise<LangSmithProject[]> {
@@ -86,6 +144,22 @@ export class LangSmithClient {
 
     if (!runs) return [];
     return runs as LangSmithRun[];
+  }
+
+  public async getDatasets(limit: number): Promise<LangSmithDataset[]> {
+    const q = `limit=${encodeURIComponent(String(limit))}`;
+    const data = await this.requestJson<any>(`/api/v1/datasets?${q}`);
+
+    const datasets = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.datasets)
+        ? data.datasets
+        : Array.isArray(data?.data)
+          ? data.data
+          : undefined;
+
+    if (!datasets) return [];
+    return datasets as LangSmithDataset[];
   }
 
   public static normalizeStatus(status: unknown): RunStatus {
