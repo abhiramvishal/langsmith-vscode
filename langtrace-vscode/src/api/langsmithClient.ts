@@ -131,9 +131,10 @@ export class LangSmithClient {
   }
 
   public async getRunChildren(runId: string): Promise<LangSmithRun[]> {
-    // As provided: check /api/v1/runs?parent_run=true&id={runId}.
-    const q = `parent_run=true&id=${encodeURIComponent(runId)}`;
-    const data = await this.requestJson<any>(`/api/v1/runs?${q}`);
+    // Fetches child steps for a trace using GET /api/v1/runs/{run_id}/children
+    const data = await this.requestJson<any>(
+      `/api/v1/runs/${encodeURIComponent(runId)}/children`
+    );
     const runs = Array.isArray(data)
       ? data
       : Array.isArray(data?.runs)

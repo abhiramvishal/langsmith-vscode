@@ -96,6 +96,68 @@ describe("LangSmithClient", () => {
     );
   });
 
+  it("getDatasets() returns array response directly", async () => {
+    const datasets = [{ id: "d1", name: "Test", description: "x", created_at: new Date().toISOString(), example_count: 0, data_type: "unknown" }];
+
+    fetchStub.resolves(
+      createResponse({
+        ok: true,
+        status: 200,
+        json: datasets,
+      })
+    );
+
+    const client = new LangSmithClient("https://example.com", "ls__test");
+    const result = await client.getDatasets(10);
+    assert.deepStrictEqual(result, datasets);
+  });
+
+  it("getDatasets() unwraps .datasets wrapper", async () => {
+    const datasets = [{ id: "d2", name: "Eval Set", description: "y", created_at: new Date().toISOString(), example_count: 0, data_type: "unknown" }];
+
+    fetchStub.resolves(
+      createResponse({
+        ok: true,
+        status: 200,
+        json: { datasets },
+      })
+    );
+
+    const client = new LangSmithClient("https://example.com", "ls__test");
+    const result = await client.getDatasets(10);
+    assert.deepStrictEqual(result, datasets);
+  });
+
+  it("getDatasets() unwraps .data wrapper", async () => {
+    const datasets = [{ id: "d3", name: "Other", description: "z", created_at: new Date().toISOString(), example_count: 0, data_type: "unknown" }];
+
+    fetchStub.resolves(
+      createResponse({
+        ok: true,
+        status: 200,
+        json: { data: datasets },
+      })
+    );
+
+    const client = new LangSmithClient("https://example.com", "ls__test");
+    const result = await client.getDatasets(10);
+    assert.deepStrictEqual(result, datasets);
+  });
+
+  it("getDatasets() returns empty array for unexpected shape", async () => {
+    fetchStub.resolves(
+      createResponse({
+        ok: true,
+        status: 200,
+        json: { something_else: [] },
+      })
+    );
+
+    const client = new LangSmithClient("https://example.com", "ls__test");
+    const result = await client.getDatasets(10);
+    assert.deepStrictEqual(result, []);
+  });
+
   it("normalizeStatus handles variants", () => {
     assert.strictEqual(LangSmithClient.normalizeStatus("success"), "success");
     assert.strictEqual(LangSmithClient.normalizeStatus("SUCCESS"), "success");

@@ -6,3 +6,5 @@ Initial release featuring:
 - Trace detail webview with recursive step rendering
 - Basic polling + status bar connection indicator
 - Commands to refresh, clear API key, open trace, and open LangSmith in a browser
+
+TODO: Set the `publisher` field in `langtrace-vscode/package.json` to your VS Code Marketplace publisher ID before running `vsce publish`.
