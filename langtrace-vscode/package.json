@@ -3,7 +3,7 @@
   "displayName": "LangTrace",
   "description": "Unofficial LangSmith client for VS Code - view traces, runs, and projects without leaving your editor",
   "version": "0.0.1",
-  "publisher": "your-publisher-id",
+  "publisher": "langtrace-vscode",
   "engines": {
     "vscode": "^1.85.0"
   },
