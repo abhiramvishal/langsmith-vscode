@@ -90,14 +90,13 @@ describe("LangSmithClient", () => {
 
     assert.strictEqual(fetchStub.callCount, 1);
     const calledUrl = fetchStub.getCall(0).args[0] as string;
-    assert.strictEqual(calledUrl, "https://example.com/runs/query");
+    assert.strictEqual(calledUrl, "https://example.com/api/v1/runs/query");
     const init = fetchStub.getCall(0).args[1] as RequestInit;
     assert.strictEqual(init.method, "POST");
     assert.strictEqual(init.headers && (init.headers as Record<string, string>)["Content-Type"], "application/json");
     assert.deepStrictEqual(JSON.parse(init.body as string), {
-      session_id: "session 1/abc",
+      session_id: ["session 1/abc"],
       limit: 10,
-      order: "desc",
     });
   });
 
