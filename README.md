@@ -17,7 +17,7 @@ LangTrace connects to the LangSmith API and lets you browse projects and runs di
 - Trace detail webview with expandable steps and JSON for inputs/outputs
 - Auto-refresh with configurable polling
 
-Screenshots: add screenshots here (Projects view, Runs view, Trace webview).
+> 📸 Screenshots coming soon — Projects view, Runs view, and Trace webview.
 
 ## Installation
 
@@ -58,5 +58,5 @@ This is an unofficial community extension and is not affiliated with, endorsed b
 
 ## License
 
-MIT
+MIT © [Abhiram Vishal](https://github.com/abhiramvishal)
 

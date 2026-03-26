@@ -11,6 +11,8 @@
 
 LangTrace connects directly to the [LangSmith](https://smith.langchain.com) API and surfaces your observability data as a native VS Code sidebar. No context-switching to the browser — inspect traces, debug failing runs, and review prompt inputs/outputs right in your editor.
 
+> 📸 Screenshots coming soon — Projects view, Runs view, and Trace webview.
+
 ---
 
 ## Features
@@ -104,4 +106,4 @@ This is an unofficial community extension and is not affiliated with, endorsed b
 
 ## License
 
-MIT
+MIT © [Abhiram Vishal](https://github.com/abhiramvishal)
