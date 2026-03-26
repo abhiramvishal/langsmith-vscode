@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g. 0.0.2). Updates package.json before publishing."
+        required: true
+        type: string
 
 jobs:
   publish:
@@ -22,6 +28,11 @@ jobs:
         run: npm ci
         working-directory: langtrace-vscode
 
+      - name: Bump version (manual trigger only)
+        if: github.event_name == 'workflow_dispatch'
+        run: npm version ${{ github.event.inputs.version }} --no-git-tag-version
+        working-directory: langtrace-vscode
+
       - name: Compile
         run: npm run compile
         working-directory: langtrace-vscode
@@ -29,6 +40,12 @@ jobs:
       - name: Build VSIX
         run: npx vsce package --no-dependencies
         working-directory: langtrace-vscode
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: langtrace-vscode-vsix
+          path: langtrace-vscode/*.vsix
 
       - name: Publish to Marketplace
         run: npx vsce publish -p ${{ secrets.VSCE_PAT }} --no-dependencies
