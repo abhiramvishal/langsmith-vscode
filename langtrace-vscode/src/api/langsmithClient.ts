@@ -320,7 +320,16 @@ export class LangSmithClient {
   }
 
   public async getProjects(): Promise<LangSmithProject[]> {
-    return this.listSessions({ limit: 100, offset: 0, include_stats: true });
+    // include_stats may be unsupported on some plans; try with it, fall back without.
+    try {
+      return await this.listSessions({ limit: 100, offset: 0, include_stats: true });
+    } catch (err) {
+      const code = (err as { statusCode?: number }).statusCode;
+      if (code === 400 || code === 422) {
+        return this.listSessions({ limit: 100, offset: 0 });
+      }
+      throw err;
+    }
   }
 
   public async getSession(sessionId: string, include_stats?: boolean): Promise<TracerSession> {
@@ -402,10 +411,11 @@ export class LangSmithClient {
   public async getRunChildren(runId: string): Promise<LangSmithRun[]> {
     const parent = await this.getRun(runId);
     const traceId = parent.trace_id ?? parent.id;
+    // Fetch all runs in the trace, then filter to direct children client-side.
+    // Omit parent_run to avoid 400s on accounts that don't support that filter.
     const data = await this.postJson<any>("/api/v1/runs/query", {
       trace_id: traceId,
-      parent_run: false,
-      limit: 100,
+      limit: 200,
     });
     const runs = LangSmithClient.normalizeRunsPayload(data);
     return runs.filter((r) => r.parent_run_id === runId);

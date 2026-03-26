@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { LangSmithClient } from "../api/langsmithClient";
 import { LangSmithProject, LangSmithRun, RunStatus } from "../models/types";
-import { formatLatency, formatTokens, formatTimestamp, getStatusColor, getStatusIcon } from "../utils/formatting";
+import { formatLatency, formatTokens, formatTimestamp, getStatusColor } from "../utils/formatting";
 
 class SetApiKeyItem extends vscode.TreeItem {
   constructor() {
@@ -43,9 +43,43 @@ export class ProjectItem extends vscode.TreeItem {
     super(project.name);
     this.project = project;
     this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
-    this.description = `${project.run_count ?? 0} runs`;
-    this.tooltip = `${project.name}\n\n${project.description ?? ""}\n\nID: ${project.id}`;
+
+    const parts: string[] = [];
+    if (project.run_count != null) parts.push(`${project.run_count} runs`);
+    if (project.latency_p50 != null) parts.push(formatLatency(project.latency_p50 * 1000));
+    if (project.error_rate != null) parts.push(`${(project.error_rate * 100).toFixed(1)}% err`);
+    this.description = parts.join(" · ");
+
+    const errorRate = project.error_rate ?? 0;
+    this.iconPath = new vscode.ThemeIcon(
+      errorRate > 0.1 ? "warning" : "folder",
+      errorRate > 0.1 ? new vscode.ThemeColor("testing.iconFailed") : undefined
+    );
+
+    const lines = [
+      `**${project.name}**`,
+      project.description ?? "",
+      "",
+      `- Runs: ${project.run_count ?? "—"}`,
+      project.latency_p50 != null ? `- Latency p50: ${formatLatency(project.latency_p50 * 1000)}` : "",
+      project.latency_p99 != null ? `- Latency p99: ${formatLatency(project.latency_p99 * 1000)}` : "",
+      project.error_rate != null ? `- Error rate: ${(project.error_rate * 100).toFixed(1)}%` : "",
+      project.total_tokens != null ? `- Total tokens: ${formatTokens(project.total_tokens)}` : "",
+      `- ID: \`${project.id}\``,
+    ].filter(Boolean);
+    this.tooltip = new vscode.MarkdownString(lines.join("\n"));
     this.contextValue = "langtrace:project";
+  }
+}
+
+function runTypeIcon(runType: string): string {
+  switch (runType) {
+    case "llm": return "hubot";
+    case "chain": return "type-hierarchy";
+    case "tool": return "tools";
+    case "retriever": return "search";
+    case "embedding": return "symbol-array";
+    default: return "circle-small";
   }
 }
 
@@ -59,53 +93,32 @@ class RunItem extends vscode.TreeItem {
       ((run.prompt_tokens ?? 0) + (run.completion_tokens ?? 0));
     const latency = run.latency ?? 0;
 
-    super(`${getStatusIcon(status)} ${run.name}`);
+    super(run.name);
     this.run = run;
     this.collapsibleState = vscode.TreeItemCollapsibleState.None;
 
-    const iconId = status === "success" ? "check" : status === "error" ? "error" : "sync~spin";
-    this.iconPath = new vscode.ThemeIcon(iconId, getStatusColor(status));
+    this.iconPath = new vscode.ThemeIcon(runTypeIcon(run.run_type), getStatusColor(status));
 
-    this.description = `${formatLatency(latency)} | ${formatTokens(totalTokens)} tokens`;
-    this.tooltip = new vscode.MarkdownString(
-      [
-        `**${run.name}**`,
-        "",
-        `- Type: ${run.run_type}`,
-        `- Status: ${status}`,
-        `- Started: ${formatTimestamp(run.start_time)}`,
-        `- Latency: ${formatLatency(latency)}`,
-        `- Tokens: ${formatTokens(totalTokens)}`,
-        run.error ? `- Error: ${run.error}` : "",
-        "",
-        "```json",
-        JSON.stringify(
-          {
-            id: run.id,
-            run_type: run.run_type,
-            status,
-            start_time: run.start_time,
-            end_time: run.end_time,
-            latency: run.latency,
-            total_tokens: run.total_tokens,
-            prompt_tokens: run.prompt_tokens,
-            completion_tokens: run.completion_tokens,
-            error: run.error,
-            inputs: run.inputs,
-            outputs: run.outputs,
-            tags: run.tags,
-            project_id: run.project_id,
-            child_run_ids: run.child_run_ids,
-            parent_run_id: run.parent_run_id,
-          },
-          null,
-          2
-        ),
-        "```",
-      ]
-        .filter(Boolean)
-        .join("\n")
-    );
+    const tokenParts: string[] = [];
+    if (run.prompt_tokens != null) tokenParts.push(`↑${formatTokens(run.prompt_tokens)}`);
+    if (run.completion_tokens != null) tokenParts.push(`↓${formatTokens(run.completion_tokens)}`);
+    const tokenText = tokenParts.length ? tokenParts.join(" ") : `${formatTokens(totalTokens)}`;
+    this.description = `${run.run_type} · ${formatLatency(latency)} · ${tokenText}`;
+
+    const tooltipLines = [
+      `**${run.name}**`,
+      "",
+      `- Type: \`${run.run_type}\``,
+      `- Status: ${status}`,
+      `- Started: ${formatTimestamp(run.start_time)}`,
+      `- Latency: ${formatLatency(latency)}`,
+      run.prompt_tokens != null ? `- Prompt tokens: ${run.prompt_tokens}` : "",
+      run.completion_tokens != null ? `- Completion tokens: ${run.completion_tokens}` : "",
+      `- Total tokens: ${formatTokens(totalTokens)}`,
+      run.error ? `\n**Error:** ${run.error}` : "",
+      run.tags?.length ? `- Tags: ${run.tags.join(", ")}` : "",
+    ].filter(Boolean);
+    this.tooltip = new vscode.MarkdownString(tooltipLines.join("\n"));
     this.tooltip.isTrusted = true;
 
     this.command = { command: "langtrace.openTrace", title: "Open Trace", arguments: [run.id] };

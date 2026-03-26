@@ -29,8 +29,21 @@ class ErrorTreeItem extends vscode.TreeItem {
 class DatasetItem extends vscode.TreeItem {
   constructor(dataset: LangSmithDataset) {
     super(dataset.name);
-    this.description = `${dataset.example_count ?? 0} examples`;
-    this.tooltip = `${dataset.name}\n\n${dataset.description}\n\nID: ${dataset.id}\nCreated: ${dataset.created_at}`;
+    const parts: string[] = [`${dataset.example_count ?? 0} examples`];
+    if (dataset.data_type) parts.push(dataset.data_type);
+    this.description = parts.join(" · ");
+    this.iconPath = new vscode.ThemeIcon("database");
+    const tooltipLines = [
+      `**${dataset.name}**`,
+      dataset.description ?? "",
+      "",
+      `- Examples: ${dataset.example_count ?? "—"}`,
+      dataset.data_type ? `- Type: \`${dataset.data_type}\`` : "",
+      `- Created: ${dataset.created_at ? new Date(dataset.created_at).toLocaleDateString() : "—"}`,
+      `- Modified: ${dataset.modified_at ? new Date(dataset.modified_at).toLocaleDateString() : "—"}`,
+      `- ID: \`${dataset.id}\``,
+    ].filter(Boolean);
+    this.tooltip = new vscode.MarkdownString(tooltipLines.join("\n"));
     this.collapsibleState = vscode.TreeItemCollapsibleState.None;
     this.contextValue = "langtrace:dataset";
   }
