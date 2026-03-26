@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { LangSmithClient } from "../api/langsmithClient";
 import { LangSmithProject, LangSmithRun, RunStatus } from "../models/types";
 import { defaultFilter, RunFilter } from "../models/filterState";
-import { formatLatency, formatTokens, formatTimestamp, getStatusColor, getStatusIcon } from "../utils/formatting";
+import { formatLatency, formatTokens, formatTimestamp, getStatusColor } from "../utils/formatting";
 
 class SetApiKeyItem extends vscode.TreeItem {
   constructor() {
@@ -54,6 +54,17 @@ class LoadMoreItem extends vscode.TreeItem {
   }
 }
 
+function runTypeIcon(runType: string): string {
+  switch (runType) {
+    case "llm": return "hubot";
+    case "chain": return "type-hierarchy";
+    case "tool": return "tools";
+    case "retriever": return "search";
+    case "embedding": return "symbol-array";
+    default: return "circle-small";
+  }
+}
+
 export class RunItem extends vscode.TreeItem {
   public readonly run: LangSmithRun;
 
@@ -64,53 +75,33 @@ export class RunItem extends vscode.TreeItem {
       ((run.prompt_tokens ?? 0) + (run.completion_tokens ?? 0));
     const latency = run.latency ?? 0;
 
-    super(`${getStatusIcon(status)} ${run.name}`);
+    super(run.name);
     this.run = run;
     this.collapsibleState = vscode.TreeItemCollapsibleState.None;
 
-    const iconId = status === "success" ? "check" : status === "error" ? "error" : "sync~spin";
-    this.iconPath = new vscode.ThemeIcon(iconId, getStatusColor(status));
+    // Type icon with status color overlay.
+    this.iconPath = new vscode.ThemeIcon(runTypeIcon(run.run_type), getStatusColor(status));
 
-    this.description = `${formatLatency(latency)} | ${formatTokens(totalTokens)} tokens`;
-    this.tooltip = new vscode.MarkdownString(
-      [
-        `**${run.name}**`,
-        "",
-        `- Type: ${run.run_type}`,
-        `- Status: ${status}`,
-        `- Started: ${formatTimestamp(run.start_time)}`,
-        `- Latency: ${formatLatency(latency)}`,
-        `- Tokens: ${formatTokens(totalTokens)}`,
-        run.error ? `- Error: ${run.error}` : "",
-        "",
-        "```json",
-        JSON.stringify(
-          {
-            id: run.id,
-            run_type: run.run_type,
-            status,
-            start_time: run.start_time,
-            end_time: run.end_time,
-            latency: run.latency,
-            total_tokens: run.total_tokens,
-            prompt_tokens: run.prompt_tokens,
-            completion_tokens: run.completion_tokens,
-            error: run.error,
-            inputs: run.inputs,
-            outputs: run.outputs,
-            tags: run.tags,
-            project_id: run.project_id,
-            child_run_ids: run.child_run_ids,
-            parent_run_id: run.parent_run_id,
-          },
-          null,
-          2
-        ),
-        "```",
-      ]
-        .filter(Boolean)
-        .join("\n")
-    );
+    const tokenParts: string[] = [];
+    if (run.prompt_tokens != null) tokenParts.push(`↑${formatTokens(run.prompt_tokens)}`);
+    if (run.completion_tokens != null) tokenParts.push(`↓${formatTokens(run.completion_tokens)}`);
+    const tokenText = tokenParts.length ? tokenParts.join(" ") : `${formatTokens(totalTokens)}`;
+    this.description = `${run.run_type} · ${formatLatency(latency)} · ${tokenText}`;
+
+    const tooltipLines = [
+      `**${run.name}**`,
+      "",
+      `- Type: \`${run.run_type}\``,
+      `- Status: ${status}`,
+      `- Started: ${formatTimestamp(run.start_time)}`,
+      `- Latency: ${formatLatency(latency)}`,
+      run.prompt_tokens != null ? `- Prompt tokens: ${run.prompt_tokens}` : "",
+      run.completion_tokens != null ? `- Completion tokens: ${run.completion_tokens}` : "",
+      `- Total tokens: ${formatTokens(totalTokens)}`,
+      run.error ? `\n**Error:** ${run.error}` : "",
+      run.tags?.length ? `- Tags: ${run.tags.join(", ")}` : "",
+    ].filter(Boolean);
+    this.tooltip = new vscode.MarkdownString(tooltipLines.join("\n"));
     this.tooltip.isTrusted = true;
 
     this.command = { command: "langtrace.openTrace", title: "Open Trace", arguments: [run.id] };

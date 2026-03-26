@@ -132,46 +132,111 @@ export class TracePanel {
     return { latencyMs, tokens };
   }
 
+  private static renderMessages(inputs: unknown, outputs: unknown): string {
+    // Try to render chat-style messages for LLM runs.
+    const messages: Array<{ role: string; content: string }> = [];
+
+    const extractMessages = (val: unknown) => {
+      if (!val || typeof val !== "object") return;
+      const obj = val as Record<string, unknown>;
+      if (Array.isArray(obj["messages"])) {
+        for (const m of obj["messages"] as unknown[]) {
+          if (m && typeof m === "object") {
+            const msg = m as Record<string, unknown>;
+            const role = String(msg["role"] ?? "user");
+            const content = typeof msg["content"] === "string"
+              ? msg["content"]
+              : safeJson(msg["content"]);
+            messages.push({ role, content });
+          }
+        }
+      }
+    };
+
+    extractMessages(inputs);
+
+    // Extract assistant response from outputs.
+    if (outputs && typeof outputs === "object") {
+      const out = outputs as Record<string, unknown>;
+      const gens = out["generations"];
+      if (Array.isArray(gens) && gens.length > 0) {
+        const first = gens[0] as Record<string, unknown>;
+        const msg = first["message"] as Record<string, unknown> | undefined;
+        const text = (msg?.["content"] ?? first["text"] ?? "") as string;
+        if (text) messages.push({ role: "assistant", content: String(text) });
+      } else if (typeof out["output"] === "string") {
+        messages.push({ role: "assistant", content: out["output"] as string });
+      }
+    }
+
+    if (messages.length === 0) return "";
+
+    const bubbles = messages.map((m) => {
+      const roleClass = m.role === "assistant" ? "msg-assistant"
+        : m.role === "system" ? "msg-system"
+        : "msg-user";
+      return `<div class="msg-bubble ${roleClass}">
+        <div class="msg-role">${escapeHtml(m.role)}</div>
+        <div class="msg-content">${escapeHtml(m.content)}</div>
+      </div>`;
+    }).join("\n");
+
+    return `<div class="msg-thread">${bubbles}</div>`;
+  }
+
   private static renderStep(node: LangSmithTrace, depth: number): string {
     const latency = node.root.latency ?? 0;
-    const tokenCount =
-      (node.root.total_tokens ?? null) ??
-      ((node.root.prompt_tokens ?? 0) + (node.root.completion_tokens ?? 0));
+    const promptTok = node.root.prompt_tokens;
+    const completionTok = node.root.completion_tokens;
+    const totalTok = (node.root.total_tokens ?? null) ?? ((promptTok ?? 0) + (completionTok ?? 0));
     const latencyText = formatLatency(latency);
-    const tokensText = formatTokens(tokenCount);
+    const tokensText = promptTok != null && completionTok != null
+      ? `↑${formatTokens(promptTok)} ↓${formatTokens(completionTok)}`
+      : `${formatTokens(totalTok)} tok`;
 
-    const inputs = safeJson(node.root.inputs);
-    const outputs = safeJson(node.root.outputs);
+    const isLlm = node.root.run_type === "llm";
+    const messagesHtml = isLlm
+      ? TracePanel.renderMessages(node.root.inputs, node.root.outputs)
+      : "";
+
+    const inputsHtml = messagesHtml
+      ? messagesHtml
+      : `<div class="json-block">
+          <div class="json-title">Inputs</div>
+          <pre class="json-source">${escapeHtml(safeJson(node.root.inputs))}</pre>
+        </div>`;
+
+    const outputsHtml = !messagesHtml
+      ? `<div class="json-block">
+          <div class="json-title">Outputs</div>
+          <pre class="json-source">${escapeHtml(safeJson(node.root.outputs))}</pre>
+        </div>`
+      : "";
 
     const errorBlock = node.root.error
       ? `<div class="trace-step-error"><strong>Error:</strong> ${escapeHtml(node.root.error)}</div>`
       : "";
 
     const childrenHtml = node.children.map((c) => TracePanel.renderStep(c, depth + 1)).join("\n");
-    const indentStyle = `margin-left: ${depth * 14}px;`;
+    const indentStyle = `margin-left: ${depth * 16}px;`;
+    const kindClass = `kind-${node.root.run_type || "step"}`;
 
     return `
       <div class="trace-step" data-run-id="${escapeHtml(node.root.id)}" style="${indentStyle}">
         <div class="trace-step-header" tabindex="0" role="button" aria-expanded="false">
           <div class="trace-step-left">
-            <span class="trace-step-kind">${escapeHtml(node.root.run_type || "step")}</span>
+            <span class="trace-step-kind ${kindClass}">${escapeHtml(node.root.run_type || "step")}</span>
             <span class="trace-step-name">${escapeHtml(node.root.name || "")}</span>
           </div>
           <div class="trace-step-metrics">
             <span class="trace-step-metric">${escapeHtml(latencyText)}</span>
-            <span class="trace-step-metric">${escapeHtml(tokensText)} tokens</span>
+            <span class="trace-step-metric">${escapeHtml(tokensText)}</span>
           </div>
         </div>
         <div class="trace-step-details" aria-hidden="true">
           ${errorBlock}
-          <div class="json-block">
-            <div class="json-title">Inputs</div>
-            <pre class="json-source" data-json-role="inputs">${escapeHtml(inputs)}</pre>
-          </div>
-          <div class="json-block">
-            <div class="json-title">Outputs</div>
-            <pre class="json-source" data-json-role="outputs">${escapeHtml(outputs)}</pre>
-          </div>
+          ${inputsHtml}
+          ${outputsHtml}
         </div>
         ${childrenHtml ? `<div class="trace-children">${childrenHtml}</div>` : ""}
       </div>
@@ -201,6 +266,12 @@ export class TracePanel {
     const tokensText = formatTokens(totalTokens);
 
     const treeHtml = children.map((c) => TracePanel.renderStep(c, 0)).join("\n");
+
+    const promptTok = run.prompt_tokens;
+    const completionTok = run.completion_tokens;
+    const tokDetail = promptTok != null && completionTok != null
+      ? `↑${formatTokens(promptTok)} prompt · ↓${formatTokens(completionTok)} completion`
+      : `${tokensText} total`;
 
     // If assets fail to load, keep minimal fallback so the UI still works.
     const css = TracePanel.cssText || `
@@ -250,9 +321,14 @@ export class TracePanel {
       </div>
       <div class="trace-meta">
         <span class="trace-meta-item"><strong>Latency:</strong> ${escapeHtml(latencyText)}</span>
-        <span class="trace-meta-item"><strong>Tokens:</strong> ${escapeHtml(tokensText)}</span>
-        <span class="trace-meta-item"><strong>Time:</strong> ${escapeHtml(timestamp)}</span>
+        <span class="trace-meta-item"><strong>Tokens:</strong> ${escapeHtml(tokDetail)}</span>
+        <span class="trace-meta-item"><strong>Started:</strong> ${escapeHtml(timestamp)}</span>
       </div>
+    </div>
+
+    <div class="trace-toolbar">
+      <button class="toolbar-btn" id="btn-expand-all">Expand all</button>
+      <button class="toolbar-btn" id="btn-collapse-all">Collapse all</button>
     </div>
 
     <div class="trace-tree">

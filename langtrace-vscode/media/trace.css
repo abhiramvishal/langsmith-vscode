@@ -167,19 +167,75 @@ pre.json-source {
 }
 
 /* Token colors for the regex-based highlighter */
-.tok-key {
-  color: #569cd6;
+.tok-key { color: #569cd6; }
+.tok-string { color: #ce9178; }
+.tok-number { color: #b5cea8; }
+.tok-boolean { color: #4fc1ff; }
+.tok-null { color: #c586c0; }
+
+/* Run-type kind badges */
+.kind-llm { background: rgba(86, 156, 214, 0.15); border-color: rgba(86, 156, 214, 0.4); color: #569cd6; }
+.kind-chain { background: rgba(78, 201, 176, 0.15); border-color: rgba(78, 201, 176, 0.4); color: #4ec9b0; }
+.kind-tool { background: rgba(220, 220, 170, 0.15); border-color: rgba(220, 220, 170, 0.4); color: #dcdcaa; }
+.kind-retriever { background: rgba(197, 134, 192, 0.15); border-color: rgba(197, 134, 192, 0.4); color: #c586c0; }
+.kind-embedding { background: rgba(206, 145, 120, 0.15); border-color: rgba(206, 145, 120, 0.4); color: #ce9178; }
+
+/* Toolbar */
+.trace-toolbar {
+  margin: 10px 0 6px;
+  display: flex;
+  gap: 8px;
 }
-.tok-string {
-  color: #ce9178;
+.toolbar-btn {
+  padding: 3px 10px;
+  font-size: 12px;
+  background: rgba(127,127,127,0.1);
+  border: 1px solid rgba(127,127,127,0.25);
+  border-radius: 4px;
+  color: var(--vscode-editor-foreground);
+  cursor: pointer;
 }
-.tok-number {
-  color: #b5cea8;
+.toolbar-btn:hover { background: rgba(127,127,127,0.2); }
+
+/* Chat message bubbles for LLM runs */
+.msg-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
 }
-.tok-boolean {
-  color: #4fc1ff;
+.msg-bubble {
+  border-radius: 8px;
+  padding: 8px 12px;
+  max-width: 90%;
 }
-.tok-null {
-  color: #c586c0;
+.msg-role {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.7;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.msg-content {
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+}
+.msg-system {
+  background: rgba(197, 134, 192, 0.1);
+  border: 1px solid rgba(197, 134, 192, 0.3);
+  align-self: flex-start;
+}
+.msg-user {
+  background: rgba(86, 156, 214, 0.1);
+  border: 1px solid rgba(86, 156, 214, 0.3);
+  align-self: flex-start;
+}
+.msg-assistant {
+  background: rgba(78, 201, 176, 0.1);
+  border: 1px solid rgba(78, 201, 176, 0.3);
+  align-self: flex-end;
 }
 
