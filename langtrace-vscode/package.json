@@ -141,7 +141,7 @@
         "langtrace.baseUrl": {
           "type": "string",
           "default": "https://api.smith.langchain.com",
-          "description": "LangSmith API base URL (change for self-hosted instances)"
+          "description": "LangSmith API root URL (e.g. https://api.smith.langchain.com). Paths are at the root; there is no /api/v1 prefix. Change for self-hosted instances."
         }
       }
     }

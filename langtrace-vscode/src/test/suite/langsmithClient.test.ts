@@ -76,7 +76,7 @@ describe("LangSmithClient", () => {
     assert.deepStrictEqual(result, projects);
   });
 
-  it("getRuns passes correct query params", async () => {
+  it("getRuns POSTs /runs/query with session_id, limit, order", async () => {
     fetchStub.resolves(
       createResponse({
         ok: true,
@@ -90,10 +90,15 @@ describe("LangSmithClient", () => {
 
     assert.strictEqual(fetchStub.callCount, 1);
     const calledUrl = fetchStub.getCall(0).args[0] as string;
-    assert.strictEqual(
-      calledUrl,
-      "https://example.com/api/v1/runs?session_id=session%201%2Fabc&limit=10&order=desc"
-    );
+    assert.strictEqual(calledUrl, "https://example.com/runs/query");
+    const init = fetchStub.getCall(0).args[1] as RequestInit;
+    assert.strictEqual(init.method, "POST");
+    assert.strictEqual(init.headers && (init.headers as Record<string, string>)["Content-Type"], "application/json");
+    assert.deepStrictEqual(JSON.parse(init.body as string), {
+      session_id: "session 1/abc",
+      limit: 10,
+      order: "desc",
+    });
   });
 
   it("getDatasets() returns array response directly", async () => {
@@ -186,7 +191,7 @@ describe("LangSmithClient", () => {
       async () => client.getProjects(),
       (err: unknown) => {
         const msg = err instanceof Error ? err.message : String(err);
-        return msg.includes("401") && msg.includes("/api/v1/projects");
+        return msg.includes("401") && msg.includes("/api/v1/sessions");
       }
     );
 
