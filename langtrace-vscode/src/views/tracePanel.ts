@@ -134,10 +134,10 @@ export class TracePanel {
 
   private static getTypeColor(runType: string): string {
     const map: Record<string, string> = {
-      llm: "#569cd6", chain: "#4ec9b0", tool: "#dcdcaa",
-      retriever: "#c586c0", embedding: "#ce9178",
+      llm: "#e040fb", chain: "#00e5a0", tool: "#ff6b35",
+      retriever: "#40d9ff", embedding: "#ffd740",
     };
-    return map[runType] ?? "#858585";
+    return map[runType] ?? "#a0a0a0";
   }
 
   private static collectStats(nodes: LangSmithTrace[]): Record<string, number> {
@@ -319,8 +319,8 @@ export class TracePanel {
     // Stats pills from child runs
     const stats = TracePanel.collectStats(children);
     const statColors: Record<string, string> = {
-      llm: "#569cd6", chain: "#4ec9b0", tool: "#dcdcaa",
-      retriever: "#c586c0", embedding: "#ce9178",
+      llm: "#e040fb", chain: "#00e5a0", tool: "#ff6b35",
+      retriever: "#40d9ff", embedding: "#ffd740",
     };
     const statPillsHtml = Object.entries(stats)
       .sort((a, b) => b[1] - a[1])

@@ -27,7 +27,7 @@ body {
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 2px;
-  background: linear-gradient(90deg, #569cd6 0%, #4ec9b0 50%, #c586c0 100%);
+  background: linear-gradient(90deg, #e040fb 0%, #00e5a0 50%, #ffd740 100%);
   opacity: 0.75;
 }
 
@@ -73,20 +73,20 @@ body {
   background: currentColor;
 }
 .status-success {
-  background: rgba(78,201,176,0.12);
-  border: 1px solid rgba(78,201,176,0.35);
-  color: #4ec9b0;
+  background: rgba(0,255,179,0.10);
+  border: 1px solid rgba(0,255,179,0.35);
+  color: #00ffb3;
 }
 .status-error {
-  background: rgba(244,135,113,0.12);
-  border: 1px solid rgba(244,135,113,0.35);
-  color: #f48771;
+  background: rgba(255,61,113,0.10);
+  border: 1px solid rgba(255,61,113,0.35);
+  color: #ff3d71;
 }
 .status-error::before { animation: blink 1.2s ease infinite; }
 .status-pending {
-  background: rgba(229,192,123,0.12);
-  border: 1px solid rgba(229,192,123,0.35);
-  color: #e5c07b;
+  background: rgba(255,170,0,0.10);
+  border: 1px solid rgba(255,170,0,0.35);
+  color: #ffaa00;
 }
 .status-pending::before { animation: spin-pulse 1.4s linear infinite; }
 
@@ -204,8 +204,8 @@ body {
   transition: border-color 150ms, background 150ms;
 }
 #search-input:focus {
-  border-color: rgba(86,156,214,0.6);
-  background: rgba(86,156,214,0.05);
+  border-color: rgba(0,229,160,0.55);
+  background: rgba(0,229,160,0.05);
 }
 #search-input::placeholder { opacity: 0.4; }
 
@@ -424,7 +424,7 @@ body {
   transition: opacity 120ms, background 120ms;
 }
 .copy-json-btn:hover { opacity: 1; background: rgba(127,127,127,0.16); }
-.copy-json-btn.copied { color: #4ec9b0; opacity: 1; }
+.copy-json-btn.copied { color: #00ffb3; opacity: 1; }
 
 pre.json-source {
   margin: 0;
@@ -441,11 +441,11 @@ pre.json-source {
 }
 
 /* ── JSON syntax tokens ────────────────────────────────────── */
-.tok-key     { color: #569cd6; }
-.tok-string  { color: #ce9178; }
-.tok-number  { color: #b5cea8; }
-.tok-boolean { color: #4fc1ff; }
-.tok-null    { color: #c586c0; }
+.tok-key     { color: #bd93f9; }
+.tok-string  { color: #ff79c6; }
+.tok-number  { color: #a8ff80; }
+.tok-boolean { color: #40d9ff; }
+.tok-null    { color: #ff6b9d; }
 
 /* ── Children container ────────────────────────────────────── */
 .trace-children {
@@ -493,9 +493,9 @@ pre.json-source {
   letter-spacing: 0;
   margin-top: 2px;
 }
-.msg-system    .msg-avatar { background: rgba(197,134,192,0.2); color: #c586c0; }
-.msg-user      .msg-avatar { background: rgba(86,156,214,0.2);  color: #569cd6; }
-.msg-assistant .msg-avatar { background: rgba(78,201,176,0.2);  color: #4ec9b0; }
+.msg-system    .msg-avatar { background: rgba(189,147,249,0.18); color: #bd93f9; }
+.msg-user      .msg-avatar { background: rgba(64,217,255,0.18);  color: #40d9ff; }
+.msg-assistant .msg-avatar { background: rgba(0,229,160,0.18);   color: #00e5a0; }
 
 .msg-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 
@@ -519,9 +519,9 @@ pre.json-source {
   white-space: pre-wrap;
   word-break: break-word;
 }
-.msg-system    .msg-content { background: rgba(197,134,192,0.1); border: 1px solid rgba(197,134,192,0.25); border-radius: 4px 8px 8px 8px; }
-.msg-user      .msg-content { background: rgba(86,156,214,0.1);  border: 1px solid rgba(86,156,214,0.25);  border-radius: 4px 8px 8px 8px; }
-.msg-assistant .msg-content { background: rgba(78,201,176,0.1);  border: 1px solid rgba(78,201,176,0.25);  border-radius: 8px 4px 8px 8px; }
+.msg-system    .msg-content { background: rgba(189,147,249,0.08); border: 1px solid rgba(189,147,249,0.25); border-radius: 4px 8px 8px 8px; }
+.msg-user      .msg-content { background: rgba(64,217,255,0.08);  border: 1px solid rgba(64,217,255,0.25);  border-radius: 4px 8px 8px 8px; }
+.msg-assistant .msg-content { background: rgba(0,229,160,0.08);   border: 1px solid rgba(0,229,160,0.25);   border-radius: 8px 4px 8px 8px; }
 
 .copy-msg-btn {
   position: absolute;
@@ -539,7 +539,7 @@ pre.json-source {
 }
 .msg-content-wrap:hover .copy-msg-btn { opacity: 0.7; }
 .copy-msg-btn:hover { opacity: 1 !important; }
-.copy-msg-btn.copied { color: #4ec9b0; opacity: 1; }
+.copy-msg-btn.copied { color: #00ffb3; opacity: 1; }
 
 /* ── No-results state ──────────────────────────────────────── */
 #no-results {
