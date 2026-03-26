@@ -47,30 +47,13 @@ export function Hero() {
 
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <a 
-                href="#"
+                href="https://marketplace.visualstudio.com/items?itemName=langtrace-vscode.langtrace-vscode"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-lg bg-fuchsia text-white font-medium hover:bg-fuchsia/90 transition-all shadow-[0_0_40px_-10px_rgba(224,64,251,0.5)] hover:shadow-[0_0_60px_-15px_rgba(224,64,251,0.7)]"
               >
                 Install from Marketplace
                 <ArrowRight className="w-4 h-4" />
-              </a>
-              <a 
-                href="#"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-lg bg-white/5 text-white font-medium hover:bg-white/10 border border-white/10 transition-all"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.2c3-.3 6-1.5 6-6.5a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 5 3 6.2 6 6.5a4.8 4.8 0 0 0-1 3.2v4" />
-                </svg>
-                View on GitHub
               </a>
             </div>
           </motion.div>

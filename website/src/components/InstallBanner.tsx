@@ -55,7 +55,9 @@ export function InstallBanner() {
           </div>
 
           <a 
-            href="#"
+            href="https://marketplace.visualstudio.com/items?itemName=langtrace-vscode.langtrace-vscode"
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-lg bg-fuchsia text-white font-medium hover:bg-fuchsia/90 transition-all shadow-[0_0_40px_-10px_rgba(224,64,251,0.5)] hover:shadow-[0_0_60px_-15px_rgba(224,64,251,0.7)]"
           >
             Install from Marketplace
