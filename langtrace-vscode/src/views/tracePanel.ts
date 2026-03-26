@@ -132,6 +132,24 @@ export class TracePanel {
     return { latencyMs, tokens };
   }
 
+  private static getTypeColor(runType: string): string {
+    const map: Record<string, string> = {
+      llm: "#569cd6", chain: "#4ec9b0", tool: "#dcdcaa",
+      retriever: "#c586c0", embedding: "#ce9178",
+    };
+    return map[runType] ?? "#858585";
+  }
+
+  private static collectStats(nodes: LangSmithTrace[]): Record<string, number> {
+    const byType: Record<string, number> = {};
+    const walk = (n: LangSmithTrace) => {
+      byType[n.root.run_type] = (byType[n.root.run_type] ?? 0) + 1;
+      for (const c of n.children) walk(c);
+    };
+    for (const n of nodes) walk(n);
+    return byType;
+  }
+
   private static renderMessages(inputs: unknown, outputs: unknown): string {
     // Try to render chat-style messages for LLM runs.
     const messages: Array<{ role: string; content: string }> = [];
@@ -175,16 +193,25 @@ export class TracePanel {
       const roleClass = m.role === "assistant" ? "msg-assistant"
         : m.role === "system" ? "msg-system"
         : "msg-user";
+      const initials = m.role === "assistant" ? "AI"
+        : m.role === "system" ? "SYS"
+        : "USR";
       return `<div class="msg-bubble ${roleClass}">
-        <div class="msg-role">${escapeHtml(m.role)}</div>
-        <div class="msg-content">${escapeHtml(m.content)}</div>
+        <div class="msg-avatar">${initials}</div>
+        <div class="msg-body">
+          <div class="msg-role">${escapeHtml(m.role)}</div>
+          <div class="msg-content-wrap">
+            <span class="msg-content">${escapeHtml(m.content)}</span>
+            <button class="copy-msg-btn">copy</button>
+          </div>
+        </div>
       </div>`;
     }).join("\n");
 
     return `<div class="msg-thread">${bubbles}</div>`;
   }
 
-  private static renderStep(node: LangSmithTrace, depth: number): string {
+  private static renderStep(node: LangSmithTrace, depth: number, index: number = 0): string {
     const latency = node.root.latency ?? 0;
     const promptTok = node.root.prompt_tokens;
     const completionTok = node.root.completion_tokens;
@@ -194,49 +221,64 @@ export class TracePanel {
       ? `↑${formatTokens(promptTok)} ↓${formatTokens(completionTok)}`
       : `${formatTokens(totalTok)} tok`;
 
+    const typeColor = TracePanel.getTypeColor(node.root.run_type);
     const isLlm = node.root.run_type === "llm";
     const messagesHtml = isLlm
       ? TracePanel.renderMessages(node.root.inputs, node.root.outputs)
       : "";
 
-    const inputsHtml = messagesHtml
-      ? messagesHtml
+    const inputsHtml = messagesHtml ? messagesHtml
       : `<div class="json-block">
-          <div class="json-title">Inputs</div>
+          <div class="json-block-header">
+            <div class="json-title">Inputs</div>
+            <button class="copy-json-btn">copy</button>
+          </div>
           <pre class="json-source">${escapeHtml(safeJson(node.root.inputs))}</pre>
         </div>`;
 
     const outputsHtml = !messagesHtml
       ? `<div class="json-block">
-          <div class="json-title">Outputs</div>
+          <div class="json-block-header">
+            <div class="json-title">Outputs</div>
+            <button class="copy-json-btn">copy</button>
+          </div>
           <pre class="json-source">${escapeHtml(safeJson(node.root.outputs))}</pre>
         </div>`
       : "";
 
     const errorBlock = node.root.error
-      ? `<div class="trace-step-error"><strong>Error:</strong> ${escapeHtml(node.root.error)}</div>`
+      ? `<div class="trace-step-error">⚠ ${escapeHtml(node.root.error)}</div>`
       : "";
 
-    const childrenHtml = node.children.map((c) => TracePanel.renderStep(c, depth + 1)).join("\n");
-    const indentStyle = `margin-left: ${depth * 16}px;`;
-    const kindClass = `kind-${node.root.run_type || "step"}`;
+    let childIndex = 0;
+    const childrenHtml = node.children.map((c) => TracePanel.renderStep(c, depth + 1, childIndex++)).join("\n");
+    const animDelay = (depth * 60 + index * 30);
 
     return `
-      <div class="trace-step" data-run-id="${escapeHtml(node.root.id)}" style="${indentStyle}">
-        <div class="trace-step-header" tabindex="0" role="button" aria-expanded="false">
-          <div class="trace-step-left">
-            <span class="trace-step-kind ${kindClass}">${escapeHtml(node.root.run_type || "step")}</span>
-            <span class="trace-step-name">${escapeHtml(node.root.name || "")}</span>
+      <div class="trace-step"
+           data-run-id="${escapeHtml(node.root.id)}"
+           data-latency-ms="${latency}"
+           data-run-type="${escapeHtml(node.root.run_type || "")}"
+           style="--indent:${depth}; --type-color:${typeColor}; --anim-delay:${animDelay}ms">
+        <div class="trace-step-card">
+          <div class="trace-step-header" tabindex="0" role="button" aria-expanded="false">
+            <span class="step-chevron">›</span>
+            <div class="trace-step-left">
+              <span class="trace-step-kind">${escapeHtml(node.root.run_type || "step")}</span>
+              <span class="trace-step-name">${escapeHtml(node.root.name || "")}</span>
+            </div>
+            <div class="trace-step-right">
+              <span class="trace-step-metric">${escapeHtml(latencyText)}</span>
+              <span class="trace-step-metric tok">${escapeHtml(tokensText)}</span>
+              <button class="copy-id-btn" data-run-id="${escapeHtml(node.root.id)}" title="Copy run ID">⎘</button>
+            </div>
+            <div class="timeline-track"><div class="timeline-fill"></div></div>
           </div>
-          <div class="trace-step-metrics">
-            <span class="trace-step-metric">${escapeHtml(latencyText)}</span>
-            <span class="trace-step-metric">${escapeHtml(tokensText)}</span>
+          <div class="trace-step-details" aria-hidden="true">
+            ${errorBlock}
+            ${inputsHtml}
+            ${outputsHtml}
           </div>
-        </div>
-        <div class="trace-step-details" aria-hidden="true">
-          ${errorBlock}
-          ${inputsHtml}
-          ${outputsHtml}
         </div>
         ${childrenHtml ? `<div class="trace-children">${childrenHtml}</div>` : ""}
       </div>
@@ -265,13 +307,29 @@ export class TracePanel {
     const latencyText = formatLatency(totalLatency);
     const tokensText = formatTokens(totalTokens);
 
-    const treeHtml = children.map((c) => TracePanel.renderStep(c, 0)).join("\n");
+    let stepIndex = 0;
+    const treeHtml = children.map((c) => TracePanel.renderStep(c, 0, stepIndex++)).join("\n");
 
     const promptTok = run.prompt_tokens;
     const completionTok = run.completion_tokens;
     const tokDetail = promptTok != null && completionTok != null
       ? `↑${formatTokens(promptTok)} prompt · ↓${formatTokens(completionTok)} completion`
       : `${tokensText} total`;
+
+    // Stats pills from child runs
+    const stats = TracePanel.collectStats(children);
+    const statColors: Record<string, string> = {
+      llm: "#569cd6", chain: "#4ec9b0", tool: "#dcdcaa",
+      retriever: "#c586c0", embedding: "#ce9178",
+    };
+    const statPillsHtml = Object.entries(stats)
+      .sort((a, b) => b[1] - a[1])
+      .map(([type, count]) => {
+        const color = statColors[type] ?? "#858585";
+        return `<span class="stat-pill" style="--type-color:${color}">
+          <span class="dot"></span>${count} ${escapeHtml(type)}
+        </span>`;
+      }).join("");
 
     // If assets fail to load, keep minimal fallback so the UI still works.
     const css = TracePanel.cssText || `
@@ -320,20 +378,34 @@ export class TracePanel {
         <div class="status-badge ${statusClass}">${escapeHtml(status)}</div>
       </div>
       <div class="trace-meta">
-        <span class="trace-meta-item"><strong>Latency:</strong> ${escapeHtml(latencyText)}</span>
-        <span class="trace-meta-item"><strong>Tokens:</strong> ${escapeHtml(tokDetail)}</span>
-        <span class="trace-meta-item"><strong>Started:</strong> ${escapeHtml(timestamp)}</span>
+        <span class="trace-meta-item">
+          <span class="trace-meta-label">Latency</span>
+          <span class="trace-meta-value">${escapeHtml(latencyText)}</span>
+        </span>
+        <span class="trace-meta-item">
+          <span class="trace-meta-label">Tokens</span>
+          <span class="trace-meta-value">${escapeHtml(tokDetail)}</span>
+        </span>
+        <span class="trace-meta-item">
+          <span class="trace-meta-label">Started</span>
+          <span class="trace-meta-value">${escapeHtml(timestamp)}</span>
+        </span>
       </div>
+      ${statPillsHtml ? `<div class="trace-stats">${statPillsHtml}</div>` : ""}
     </div>
 
     <div class="trace-toolbar">
-      <button class="toolbar-btn" id="btn-expand-all">Expand all</button>
-      <button class="toolbar-btn" id="btn-collapse-all">Collapse all</button>
+      <button class="toolbar-btn" id="btn-expand-all">⊞ Expand all</button>
+      <button class="toolbar-btn" id="btn-collapse-all">⊟ Collapse all</button>
+      <div class="search-wrap">
+        <input id="search-input" type="text" placeholder="Search steps…" autocomplete="off" spellcheck="false" />
+      </div>
     </div>
 
     <div class="trace-tree">
-      ${treeHtml || "<div class='trace-empty'>No child runs</div>"}
+      ${treeHtml || "<div class='trace-empty'>No child runs found</div>"}
     </div>
+    <div id="no-results">No steps match your search</div>
 
     <script>${js}</script>
   </body>
